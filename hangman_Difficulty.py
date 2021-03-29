@@ -5,7 +5,6 @@
 
 import re
 import numpy as np
-from numpy.random import default_rng
 
 
 class Difficulty:
@@ -37,6 +36,19 @@ class Difficulty:
             wordBank_trimmed.append(wordBank_untrimmed[num])
 
         return wordBank_trimmed
+
+    @staticmethod
+    def ee_word_bank():
+
+        wordBank = []
+
+        with open('pkmn.txt', 'r') as selectionFile:
+            for line in selectionFile:
+                line = line.rstrip()
+                line = line.upper()
+                wordBank.append(line)
+
+        return wordBank
 
     @staticmethod
     def easy_modify():

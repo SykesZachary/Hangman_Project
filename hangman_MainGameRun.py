@@ -12,6 +12,7 @@ TODO: Place pokemon easter egg
 import os
 import pygame as pg
 import random
+import re
 import time
 import sys
 
@@ -19,6 +20,7 @@ from pygame.locals import *
 
 from hangman_Difficulty import Difficulty
 from hangman_BodyParts import body_parts
+from hangman_EndScreen import end_screen
 
 # Initialise
 pg.init()
@@ -41,6 +43,9 @@ GREEN = (0, 255, 0)
 BLACK = (0, 0, 0)
 GREY = (128, 128, 128)
 WHITE = (255, 255, 255)
+
+PIKA_YELLOW = (251, 202, 60)
+PIKA_RED = (197, 32, 24)
 
 # Surface dimensions
 mainDISPLAY_w = 600
@@ -88,18 +93,24 @@ def key_input(lst1, lst2):
 
 
 # Hangman run
-def hangman(word, diff):
+def hangman(word, diff, colour_1, colour_2):  # 1 = line/letter 2 = bkgrnd
 
+    symbol_list = [':', '\'', '-', '.']
     code_list = []
     for letter in list(word):
-        code_list.append(alpha_dict[letter])
+        if letter in symbol_list or letter == ' ':
+            continue
+        elif letter not in symbol_list:
+            code_list.append(alpha_dict[letter])
 
     # Variables set for use during hangman. Explanations inline
     player_score = []  # Letters in target word correctly guessed
     prev_guess = []  # List of all letters previously guessed
     wrong_guess = []  # List of all wrongly guessed letters
-    box_row_1 = []  # Will only hold seven items to determine incorrect guess placements (row 1)
-    box_row_2 = []  # Will only hold seven items to determine incorrect guess placements (row 2)
+    # Will only hold seven items to determine incorrect guess placements (row 1)
+    box_row_1 = []
+    # Will only hold seven items to determine incorrect guess placements (row 2)
+    box_row_2 = []
     turn = diff  # Total number of turns before game end. 10 for Easy, 6 for hard
 
     # Hangman Game Loop Begin
@@ -120,34 +131,59 @@ def hangman(word, diff):
         bar_len = 30
         box_len = 30
 
-        i = len(word)
-
         # Store rects to place correct guess letters
         letter_rects = []
 
         # Correct letter screen placement setup
-        while i > 0:
+        for letter in word:
 
-            letter_rects.append(pg.draw.rect(mainDISPLAY, BLACK, (box_x, box_y, box_len, 10)))
-            pg.draw.line(mainDISPLAY, WHITE, (bar_x, bar_y), ((bar_x + bar_len), bar_y), 2)
+            if letter in symbol_list:
+                symbol_rect = pg.draw.rect(mainDISPLAY, colour_2,
+                                           (box_x, box_y, box_len, 10))
+                symbol_rect = symbol_rect.center
+                symbol_text = smallText.render(letter, True, colour_1)
+                mainDISPLAY.blit(symbol_text, symbol_rect)
 
-            bar_x += (bar_len + 10)
-            box_x += (box_len + 10)
-            i -= 1
+                bar_x += (bar_len + 10)
+                box_x += (box_len + 10)
 
-            pg.display.update()
+                pg.display.update()
+
+            elif letter != ' ':
+                letter_rects.append(pg.draw.rect(
+                    mainDISPLAY, colour_2, (box_x, box_y, box_len, 10)))
+                pg.draw.line(mainDISPLAY, colour_1, (bar_x, bar_y),
+                             ((bar_x + bar_len), bar_y), 2)
+
+                bar_x += (bar_len + 10)
+                box_x += (box_len + 10)
+
+                pg.display.update()
+
+            elif letter == ' ':
+                bar_x += (bar_len + 10)
+                box_x += (box_len + 10)
+
+                pg.display.update()
 
         # Correct guess
         guess = key_input(code_list, prev_guess)
         if guess[1] is True:
 
             # Letter placement
-            correctGuess = smallText.render(guess[0], True, WHITE)
+            correctGuess = smallText.render(guess[0], True, colour_1)
 
             let_pos = 0
-            word = word.upper()
 
-            for letter in list(word):
+            # Setting up win condition word with just letters
+            win_cond = word.replace(' ', '')
+            rx = re.compile('([:\'-.])')
+            win_cond = rx.sub('', win_cond)
+
+            win_cond = win_cond.upper()
+
+            for letter in list(win_cond):
+
                 if guess[0] == letter:
                     correctRect = letter_rects[let_pos]
                     correctRect = correctRect.center
@@ -168,18 +204,9 @@ def hangman(word, diff):
             player_score.append(guess[0])
 
             # Conditional to check win conditions
-            if len(player_score) == len(set(list(word))) and turn is not 0:  # Game Won!
+            if len(player_score) == len(set(list(win_cond))) and turn is not 0:  # Game Won!
 
-                # Congratulaaaations https://tenor.com/brJVM.gif
-                winText = pg.font.Font(oswald_regular, 50)
-                grats_message = winText.render('Congratulations! You Won!', True, WHITE)
-                grats_rect = pg.draw.rect(mainDISPLAY, BLACK, (55, 600, 300, 50))
-                mainDISPLAY.blit(grats_message, grats_rect)
-
-                pg.display.update()
-                clock.tick(15)
-
-                time.sleep(3)
+                end_screen('win', colour_1, colour_2, word)
 
                 # TODO: Put a grats screen with the word definition
                 man_hang = False
@@ -191,7 +218,8 @@ def hangman(word, diff):
                 prev_guess.append(guess[0])
 
             # Incorrect letter screen placement setup
-            bad_guess_box_list = []  # Holds pg.rects that incorrect guesses will go in
+            # Holds pg.rects that incorrect guesses will go in
+            bad_guess_box_list = []
 
             # Initial box coords
             box_x_init = 330
@@ -202,7 +230,7 @@ def hangman(word, diff):
             if guess[0] not in wrong_guess:
                 wrong_guess.append(guess[0])
 
-                body_parts(len(wrong_guess), mainDISPLAY, WHITE)
+                body_parts(len(wrong_guess), mainDISPLAY, colour_1)
 
                 if len(box_row_1) < 8:
                     box_row_1.append(guess[0])
@@ -216,14 +244,17 @@ def hangman(word, diff):
                     if box_x_mod > 555:
                         box_x_mod = 360 + (box_len * len(box_row_2))
                         box_y = box_y + 30
-                        bad_guess_box = pg.draw.rect(mainDISPLAY, BLACK, (box_x_mod, box_y, box_len, 10))
+                        bad_guess_box = pg.draw.rect(
+                            mainDISPLAY, colour_2, (box_x_mod, box_y, box_len, 10))
                         bad_guess_box_list.append(bad_guess_box)
 
                     else:
-                        bad_guess_box = pg.draw.rect(mainDISPLAY, BLACK, (box_x_mod, box_y, box_len, 10))
+                        bad_guess_box = pg.draw.rect(
+                            mainDISPLAY, colour_2, (box_x_mod, box_y, box_len, 10))
                         bad_guess_box_list.append(bad_guess_box)
 
-                    bad_guess_text = smallText.render(wrong_guess[-1], True, WHITE)
+                    bad_guess_text = smallText.render(
+                        wrong_guess[-1], True, colour_1)
                     mainDISPLAY.blit(bad_guess_text, bad_guess_box_list[-1])
 
                     pg.display.update()
@@ -231,47 +262,13 @@ def hangman(word, diff):
 
                 turn -= 1
 
-            if turn is 0:  # Game is lost
+            if turn == 0:  # Game is lost
 
-                # Font for the losing display
-                lossText = pg.font.Font(oswald_regular, 35)
+                end_screen('loss', colour_1, colour_2, word)
 
-                # TODO: Build a 'You lost' screen with the word definition here
-
-                # You lost display with word reveal
-                sorry_message = lossText.render('Sorry you lost...', True, WHITE)
-                sorry_rect = pg.draw.rect(mainDISPLAY, BLACK, (200, 600, 300, 50))
-                mainDISPLAY.blit(sorry_message, sorry_rect)
-
-                pg.display.update()
-                clock.tick(15)
-
-                time.sleep(2)
-
-                # This block capitalises the first letter in the word
-                word = word.lower()
-                word_lst = list(word)
-                first_let = word_lst[0]
-                first_let = first_let.upper()
-                word_lst[0] = first_let
-                word_reveal = ''
-
-                for i in word_lst:
-                    word_reveal += str(i)
-
-                # Prints the word missed on screen
-                missed_word = medText.render(f'The word was: {word_reveal}', True, WHITE)
-                missed_rect = pg.draw.rect(mainDISPLAY, BLACK, (150, 600, 300, 50))
-                mainDISPLAY.blit(missed_word, missed_rect)
-
-                pg.display.update()
-                clock.tick(15)
-
-                time.sleep(2)
                 man_hang = False
 
         elif guess == 0:  # Wont be displayed. CL only
-            print('Guess again')
             continue
 
         pg.display.update()
@@ -292,7 +289,8 @@ def flavour_screen():
                 sys.exit()
 
         mainDISPLAY.fill(BLACK)
-        TextSurf, TextRect = text_objects('Ok... Let me pick a word', largeText)
+        TextSurf, TextRect = text_objects(
+            'Ok... Let me pick a word', largeText)
         TextRect.center = ((mainDISPLAY_w / 2), (mainDISPLAY_h / 2))
         mainDISPLAY.blit(TextSurf, TextRect)
 
@@ -328,14 +326,18 @@ def easy_game():
         mainDISPLAY.fill(BLACK)
 
         # Gallows
-        pg.draw.line(mainDISPLAY, WHITE, (50, 100), (50, 400), 4)  # Main backbone
+        pg.draw.line(mainDISPLAY, WHITE, (50, 100),
+                     (50, 400), 4)  # Main backbone
         pg.draw.line(mainDISPLAY, WHITE, (50, 100), (150, 100), 4)  # Top bar
-        pg.draw.line(mainDISPLAY, WHITE, (150, 100), (150, 150), 4)  # Hanging rope
-        pg.draw.line(mainDISPLAY, WHITE, (50, 375), (180, 375), 4)  # Bottom board
+        pg.draw.line(mainDISPLAY, WHITE, (150, 100),
+                     (150, 150), 4)  # Hanging rope
+        pg.draw.line(mainDISPLAY, WHITE, (50, 375),
+                     (180, 375), 4)  # Bottom board
         pg.draw.line(mainDISPLAY, WHITE, (180, 375), (180, 400), 4)  # Supports
 
         # Incorrect guesses bank
-        incorrect_caption_box = pg.draw.rect(mainDISPLAY, BLACK, (385, 55, 200, 40))
+        incorrect_caption_box = pg.draw.rect(
+            mainDISPLAY, BLACK, (385, 55, 200, 40))
         incorrect_guess = smallText.render('Incorrect Guesses', True, WHITE)
         pg.draw.line(mainDISPLAY, WHITE, (340, 100), (560, 100), 4)
         mainDISPLAY.blit(incorrect_guess, incorrect_caption_box)
@@ -344,7 +346,7 @@ def easy_game():
         clock.tick(15)
         easy = False
 
-    hangman(wordGuess, 10)
+    hangman(wordGuess, 10, WHITE, BLACK)
 
 
 def hard_game():
@@ -353,8 +355,8 @@ def hard_game():
 
     flavour_screen()
 
-    easy = True
-    while easy:
+    hard = True
+    while hard:
         for event in pg.event.get():
             if event.type == QUIT:
                 pg.quit()
@@ -363,20 +365,24 @@ def hard_game():
         mainDISPLAY.fill(BLACK)
 
         # Gallows
-        pg.draw.line(mainDISPLAY, WHITE, (50, 100), (50, 400), 4)  # Main backbone
+        pg.draw.line(mainDISPLAY, WHITE, (50, 100),
+                     (50, 400), 4)  # Main backbone
         pg.draw.line(mainDISPLAY, WHITE, (50, 100), (150, 100), 4)  # Top bar
-        pg.draw.line(mainDISPLAY, WHITE, (150, 100), (150, 150), 4)  # Hanging rope
-        pg.draw.line(mainDISPLAY, WHITE, (50, 375), (180, 375), 4)  # Bottom board
+        pg.draw.line(mainDISPLAY, WHITE, (150, 100),
+                     (150, 150), 4)  # Hanging rope
+        pg.draw.line(mainDISPLAY, WHITE, (50, 375),
+                     (180, 375), 4)  # Bottom board
         pg.draw.line(mainDISPLAY, WHITE, (180, 375), (180, 400), 4)  # Supports
 
         # Incorrect guesses bank
-        incorrect_caption_box = pg.draw.rect(mainDISPLAY, BLACK, (385, 55, 200, 40))
+        incorrect_caption_box = pg.draw.rect(
+            mainDISPLAY, BLACK, (385, 55, 200, 40))
         incorrect_guess = smallText.render('Incorrect Guesses', True, WHITE)
         pg.draw.line(mainDISPLAY, WHITE, (340, 100), (560, 100), 4)
         mainDISPLAY.blit(incorrect_guess, incorrect_caption_box)
 
         pg.display.update()
         clock.tick(15)
-        easy = False
+        hard = False
 
-    hangman(wordGuess, 6)
+    hangman(wordGuess, 6, WHITE, BLACK)

@@ -10,6 +10,7 @@ from pygame.locals import *
 from pygameButton import button
 from hangman_MainGameRun import easy_game
 from hangman_MainGameRun import hard_game
+from hangman_PKMNee import PKMN_ee
 
 
 # Initialisation
@@ -33,7 +34,11 @@ GREEN = (0, 255, 0)
 BLACK = (0, 0, 0)
 GREY = (128, 128, 128)
 WHITE = (255, 255, 255)
+
 trans_BLACK = (0, 0, 0, 0)
+
+PIKA_YELLOW = (251, 202, 60)
+PIKA_RED = (197, 32, 24)
 
 # Surface dimensions
 titleDISPLAY_w = 600
@@ -122,7 +127,7 @@ def title_card():
 
         # Hidden PKMN EE call
         button(titleDISPLAY, '', 507, 215, 5, 5,
-               WHITE, GREY, WHITE, oswald_regular, None)
+               WHITE, WHITE, WHITE, oswald_regular, PKMN_ee)
 
         pg.display.update()
         clock.tick(15)
